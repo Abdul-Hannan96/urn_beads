@@ -6,13 +6,129 @@ execute:
 
 ---
 
+## Introduction:
 Understanding how different conditions affect outcomes is a key part of working with categorical variables and numeric covariates.
 
 In this project, we use simulated data from bead scooping trials to explore how the number of beads scooped (shovel size) relates to the proportion of red beads in each scoop.
 
 One potential weakness in our model is that the data may not be fully representative of the population, especially if certain shovel sizes or bead arrangements were over- or under-sampled.
 
+We use a logistic model to describe the probability of a success:
+
+$$
+P(Y = 1) = \frac{1}{1 + e^{-(\beta_0 + \beta_1 X_1 + \beta_2 X_2 + \cdots + \beta_n X_n)}}
+$$
+
+with $Y \sim \text{Bernoulli}(\rho)$ where $\rho$ is the probability given above.
+
+$$
+\log\left(\frac{\hat{P}(\text{red})}{1 - \hat{P}(\text{red})}\right) = -1.39
+$$
+
+
+
 ```{r}
 #| message: false
 library(tidyverse)
 ```
+
+
+
+```{r}
+#| label: fit-logistic-model
+#| cache: true
+#| message: false
+#| warning: false
+library(easystats)
+library(tidymodels) 
+library(broom)
+library(tidyverse)
+library(gt)
+
+
+
+urn <- tibble(
+  color = rep(c("red", "white"), times = c(250, 750))
+)
+
+
+sampling_grid <- expand_grid(
+  trial_ID = 1:100,
+  shovel_size = 1:100
+)
+
+shovels_100 <- sampling_grid %>%
+  mutate(shovel = map(shovel_size, ~ slice_sample(urn, n = .)))
+
+
+shovel <- shovels_100 %>%
+  filter(trial_ID == 1) %>%
+  unnest(shovel) %>%
+  mutate(color = factor(color))  # <-- very important!
+
+
+
+fit_color <- logistic_reg(engine = "glm") %>%
+  set_mode("classification") %>%
+  fit(color ~ 1, data = shovel)
+
+
+check_predictions(extract_fit_engine(fit_color))
+
+
+tidy(fit_color, conf.int = TRUE)
+
+
+# Plot 1:
+tidy(fit_color, conf.int = TRUE) %>%
+  select(term, estimate, conf.low, conf.high) %>%
+  gt() %>%
+  fmt_number(columns = c(estimate, conf.low, conf.high), decimals = 3) %>%
+  cols_label(
+    term = "Term",
+    estimate = "Estimate",
+    conf.low = "95% CI (Lower)",
+    conf.high = "95% CI (Upper)"
+  ) %>%
+  tab_header(
+    title = "Logistic Regression Results",
+    subtitle = "Model estimates with 95% confidence intervals"
+  )
+
+
+```
+
+```{r}
+#| cache: true
+#| message: false
+#| warning: false
+library(marginaleffects)
+library(ggplot2)
+
+shovel <- shovels_100 %>%
+  filter(trial_ID == 1) %>%
+  unnest(shovel) %>%
+  mutate(
+    color = factor(color),
+    shovel_size = 1  # add shovel_size manually for now
+  )
+fit_color <- logistic_reg(engine = "glm") %>%
+  set_mode("classification") %>%
+  fit(color ~ shovel_size, data = shovel)
+
+plot_predictions(fit_color, type = "prob", condition = "shovel_size") +
+  labs(
+    title = "Predicted Probability of Scooping a Red Bead by Shovel Size",
+    subtitle = "As shovel size increases, predicted probability stabilizes around the true red bead proportion",
+    x = "Shovel Size",
+    y = "Predicted Probability of Red",
+    caption = "Simulated data from an urn of 1,000 beads (250 red, 750 white)"
+  ) +
+  theme_minimal(base_size = 14)
+
+```
+
+
+## Summary:
+We model the probability that a scooped bead is red, a categorical outcome with values red or white, as a logistic function of an intercept only (no covariates in this version of the model).
+We estimate that the average probability of scooping a red bead is approximately 0.742, with a 95% confidence interval ranging from 0.731 to 0.754, indicating fairly high precision in our model’s prediction.
