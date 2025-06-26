@@ -10,6 +10,8 @@ Understanding how different conditions affect outcomes is a key part of working 
 
 In this project, we use simulated data from bead scooping trials to explore how the number of beads scooped (shovel size) relates to the proportion of red beads in each scoop.
 
+One potential weakness in our model is that the data may not be fully representative of the population, especially if certain shovel sizes or bead arrangements were over- or under-sampled.
+
 ```{r}
 #| message: false
 library(tidyverse)
