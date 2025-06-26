@@ -1,0 +1,16 @@
+---
+title: "Proportion of red beads"
+format: html
+execute: 
+  echo: false
+
+---
+
+Understanding how different conditions affect outcomes is a key part of working with categorical variables and numeric covariates.
+
+In this project, we use simulated data from bead scooping trials to explore how the number of beads scooped (shovel size) relates to the proportion of red beads in each scoop.
+
+```{r}
+#| message: false
+library(tidyverse)
+```
